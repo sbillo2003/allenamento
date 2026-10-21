@@ -20,6 +20,45 @@ import { processWorkoutProgression } from '../logic/progression';
 import { getDemoState } from '../data/demoData';
 
 const STORAGE_KEY = 'calis.v1';
+
+/** Lunedi' della settimana che contiene la data indicata, come YYYY-MM-DD. */
+function mondayISO(dateInput: string | Date): string {
+  const d = new Date(dateInput);
+  d.setHours(0, 0, 0, 0);
+  const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay(); // domenica = 7
+  d.setDate(d.getDate() - (dayOfWeek - 1));
+  const mese = String(d.getMonth() + 1).padStart(2, '0');
+  const giorno = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mese}-${giorno}`;
+}
+
+/** Quante settimane di calendario sono passate dall'inizio della settimana corrente del piano. */
+function weeksElapsed(plan: Plan): number {
+  const inizio = plan.settimanaIniziataIl || mondayISO(plan.creatoIl);
+  const oggi = mondayISO(new Date());
+  const diff = Date.parse(oggi) - Date.parse(inizio);
+  if (!Number.isFinite(diff) || diff <= 0) return 0;
+  return Math.floor(diff / (7 * 24 * 3600 * 1000));
+}
+
+/**
+ * Porta il piano alla settimana di ciclo corrispondente al calendario.
+ * Una settimana di allenamento dura una settimana vera: se l'app resta
+ * chiusa per tre settimane, al rientro il ciclo e' avanzato di tre.
+ */
+function allineaSettimanaAlCalendario(state: AppState): AppState {
+  if (!state.plan || !state.profile) return state;
+
+  const passate = weeksElapsed(state.plan);
+  if (passate < 1) return state;
+
+  const corrente = state.plan.settimanaCorrente;
+  const prossima = ((corrente - 1 + passate) % 5) + 1;
+  const nuovoPiano = generateWorkoutPlan(state.profile, state.levels, prossima);
+  nuovoPiano.settimanaIniziataIl = mondayISO(new Date());
+
+  return { ...state, plan: nuovoPiano };
+}
 export const ACTIVE_SESSION_STORAGE_KEY = 'calis.active_session';
 
 export function getCalendarWeekDifference(startDateStr: string, currentDate: Date = new Date()): number {
@@ -87,7 +126,7 @@ type Action =
   | { type: 'SWAP_EXERCISE'; payload: { sessionId: string; blockIndex: number; newExerciseId: string } }
   | { type: 'MOVE_SESSION_DAY'; payload: { sessionId: string; newDay: number } }
   | { type: 'ADVANCE_WEEK' }
-  | { type: 'AUTO_SYNC_WEEK'; payload: { week: number } }
+  | { type: 'SYNC_WEEK' }
   | { type: 'COMPLETE_RETEST'; payload: { assessment: AssessmentResult } }
   | { type: 'REGENERATE_PLAN' }
   | { type: 'LOAD_DEMO_DATA' }
@@ -252,20 +291,18 @@ function appReducer(state: AppState, action: Action): AppState {
       if (!state.plan || !state.profile) return state;
       const nextWeek = state.plan.settimanaCorrente >= 5 ? 1 : state.plan.settimanaCorrente + 1;
       const newPlan = generateWorkoutPlan(state.profile, state.levels, nextWeek);
+      newPlan.settimanaIniziataIl = mondayISO(new Date());
       return {
         ...state,
         plan: newPlan
       };
     }
 
-    case 'AUTO_SYNC_WEEK': {
+    case 'SYNC_WEEK': {
+      // Allinea la settimana del ciclo al calendario: una settimana di
+      // allenamento dura una settimana vera, anche se l'app resta chiusa.
       if (!state.plan || !state.profile) return state;
-      const targetWeek = action.payload.week;
-      const newPlan = generateWorkoutPlan(state.profile, state.levels, targetWeek);
-      return {
-        ...state,
-        plan: newPlan
-      };
+      return allineaSettimanaAlCalendario(state);
     }
 
     case 'COMPLETE_RETEST': {
@@ -341,7 +378,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const parsed = JSON.parse(stored);
       // Validazione schema minima
       if (parsed && parsed.version === 'calis.v1' && parsed.levels) {
-        return parsed as AppState;
+        // Allinea subito il ciclo al calendario, prima del primo render
+        return allineaSettimanaAlCalendario(parsed as AppState);
       } else {
         console.warn('Storage con versione differente o schema non valido');
         setIsCorrupted(true);
@@ -364,14 +402,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   // Avanzamento automatico della settimana quando inizia una nuova settimana di calendario
+  // L'allineamento all'apertura avviene gia' nell'inizializzatore dello stato.
+  // Qui copriamo il caso dell'app lasciata aperta a cavallo di un lunedi'.
   useEffect(() => {
-    if (!state.plan || !state.profile) return;
-    const weeksElapsed = getCalendarWeekDifference(state.plan.creatoIl);
-    const expectedWeek = (weeksElapsed % 5) + 1;
-    if (state.plan.settimanaCorrente !== expectedWeek) {
-      dispatch({ type: 'AUTO_SYNC_WEEK', payload: { week: expectedWeek } });
-    }
-  }, [state.plan?.creatoIl]);
+    const alRitorno = () => {
+      if (document.visibilityState === 'visible') dispatch({ type: 'SYNC_WEEK' });
+    };
+    document.addEventListener('visibilitychange', alRitorno);
+    return () => document.removeEventListener('visibilitychange', alRitorno);
+  }, []);
 
   // Gestione tema scuro / chiaro sul DOM root
   useEffect(() => {

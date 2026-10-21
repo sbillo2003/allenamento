@@ -105,6 +105,9 @@ export interface Plan {
   id: string;
   creatoIl: string;
   settimanaCorrente: number; // 1 to 5
+  // Lunedi' (YYYY-MM-DD) della settimana di calendario in cui e' iniziata
+  // la settimana di allenamento corrente. Serve per avanzare il ciclo da solo.
+  settimanaIniziataIl?: string;
   split: 'Full Body' | 'Upper / Lower' | 'Push / Pull / Legs';
   sessions: PlannedSession[];
 }

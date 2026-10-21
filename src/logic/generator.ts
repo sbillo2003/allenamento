@@ -297,10 +297,19 @@ export function generateWorkoutPlan(
     };
   });
 
+  const oggi = new Date();
+  oggi.setHours(0, 0, 0, 0);
+  const giornoSettimana = oggi.getDay() === 0 ? 7 : oggi.getDay();
+  oggi.setDate(oggi.getDate() - (giornoSettimana - 1));
+  const lunedi = `${oggi.getFullYear()}-${String(oggi.getMonth() + 1).padStart(2, '0')}-${String(
+    oggi.getDate()
+  ).padStart(2, '0')}`;
+
   return {
     id: `plan_${Date.now()}`,
     creatoIl: new Date().toISOString(),
     settimanaCorrente,
+    settimanaIniziataIl: lunedi,
     split: splitName,
     sessions
   };
