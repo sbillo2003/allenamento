@@ -20,6 +20,7 @@ import { useApp } from '../store/AppContext';
 import { evaluateAssessment } from '../logic/assessment';
 import { PATTERN_NAMES } from '../data/exercises';
 import { STANDARDS, calculateAge, getAgeFactor } from '../data/standards';
+import { TestFisiciStep, RisultatiTest } from './TestFisiciStep';
 import {
   IconChevronRight,
   IconChevronLeft,
@@ -67,25 +68,11 @@ export function OnboardingWizard() {
   const [squat, setSquat] = useState<number | ''>(25);
   const [plankSec, setPlankSec] = useState<number | ''>(60);
   const [dipOrRow, setDipOrRow] = useState<number | ''>(5);
-  const [hollowHoldSec, setHollowHoldSec] = useState<number | ''>('');
 
   // Cronometro per i test
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerSec, setTimerSec] = useState(0);
-
   // Risultato calcolato
+  const [testStimati, setTestStimati] = useState<string[]>([]);
   const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null);
-
-  // Timer effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (timerRunning) {
-      interval = setInterval(() => {
-        setTimerSec((s) => s + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [timerRunning]);
 
   const toggleEquipment = (eq: Equipment) => {
     if (eq === 'pavimento') return; // Pavimento sempre presente
@@ -115,26 +102,29 @@ export function OnboardingWizard() {
 
   const dipOrRowType: 'dip' | 'row' = hasDipEquipment ? 'dip' : 'row';
 
-  // Calcola i risultati quando si raggiunge lo step 10
-  const handleCalculateResults = () => {
+  /**
+   * Calcola i livelli dai risultati appena raccolti. Riceve i valori come
+   * argomento invece di leggerli dallo stato: al momento della chiamata le
+   * setState del passo precedente non sono ancora state applicate.
+   */
+  const calcolaRisultati = (r: RisultatiTest) => {
     const input = {
       sex: sesso,
       birthDate: dataNascita,
       mesiInattivita: Number(mesiInattivita) || 0,
       equipment: attrezzatura,
-      pushUp: Number(pushUp) || 0,
-      pushUpType,
-      pullUp: Number(pullUp) || 0,
-      deadHangSec: Number(deadHangSec) || 0,
-      squat: Number(squat) || 0,
-      plankSec: Number(plankSec) || 0,
+      pushUp: r.pushUp,
+      pushUpType: r.pushUpType,
+      pullUp: r.pullUp,
+      deadHangSec: r.deadHangSec,
+      squat: r.squat,
+      plankSec: r.plankSec,
       dipOrRowType,
-      dipOrRow: Number(dipOrRow) || 0,
-      hollowHoldSec: hollowHoldSec ? Number(hollowHoldSec) : undefined
+      dipOrRow: r.dipOrRow,
+      hollowHoldSec: r.hollowHoldSec ? Number(r.hollowHoldSec) : undefined
     };
 
-    const result = evaluateAssessment(input);
-    setAssessmentResult(result);
+    setAssessmentResult(evaluateAssessment(input));
     setStep(10);
   };
 
@@ -182,16 +172,14 @@ export function OnboardingWizard() {
 
   return (
     <div className="min-h-screen bg-canvas text-txt flex flex-col justify-between max-w-[480px] mx-auto px-4 py-6">
-      {/* Top Header & Progress Bar */}
-      <div>
+      {/* Intestazione e barra di avanzamento. Durante i test fisici la
+          nasconde: quella schermata ha una sua navigazione per passare da
+          un test all'altro, e due frecce indietro sono una di troppo. */}
+      <div className={step === 9 ? 'hidden' : undefined}>
         <div className="flex items-center justify-between mb-4">
           {step > 1 ? (
             <button
-              onClick={() => {
-                setTimerRunning(false);
-                setTimerSec(0);
-                setStep((s) => Math.max(1, s - 1));
-              }}
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
               className="w-11 h-11 flex items-center justify-center rounded-xl bg-surface border border-subtle text-txt hover:bg-elevated transition-colors"
               aria-label="Torna indietro"
             >
@@ -769,204 +757,21 @@ export function OnboardingWizard() {
 
         {/* STEP 9: Test Fisici (Wizard interno o schermate sequenziali) */}
         {step === 9 && (
-          <div className="space-y-4">
-            <div>
-              <div className="text-xs font-bold text-accent uppercase tracking-wider">Test Fisici di Livello</div>
-              <h2 className="text-2xl font-bold text-txt mt-0.5">Misuriamo la tua forza reale</h2>
-              <p className="text-xs text-muted-txt mt-1">
-                Regole: 2 minuti di riposo tra i test, fermati al cedimento tecnico (quando la forma si deteriora), inserisci numeri reali.
-              </p>
-            </div>
-
-            {/* Cronometro opzionale di ausilio */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-subtle">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-txt">Cronometro test:</span>
-                <span className="text-lg font-bold text-accent tabular-nums">
-                  {Math.floor(timerSec / 60)}:{(timerSec % 60).toString().padStart(2, '0')}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setTimerRunning(!timerRunning)}
-                  className="p-2 rounded-lg bg-elevated border border-subtle text-txt hover:bg-surface"
-                  aria-label={timerRunning ? 'Pausa' : 'Avvia'}
-                >
-                  {timerRunning ? <IconPause size={16} /> : <IconPlay size={16} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTimerRunning(false);
-                    setTimerSec(0);
-                  }}
-                  className="p-2 rounded-lg bg-elevated border border-subtle text-muted-txt hover:text-txt"
-                  aria-label="Azzera cronometro"
-                >
-                  <IconRefresh size={16} />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3.5 max-h-[52vh] overflow-y-auto pr-1">
-              {/* Test 1: Push-up */}
-              <div className="p-3.5 rounded-xl bg-surface border border-subtle space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-txt">1. Massimo Push-up consecutivi</span>
-                  <div className="flex gap-1 text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => setPushUpType('completi')}
-                      className={`px-2 py-0.5 rounded ${
-                        pushUpType === 'completi' ? 'bg-accent text-accent-contrast font-bold' : 'text-muted-txt'
-                      }`}
-                    >
-                      Completi
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPushUpType('ginocchia')}
-                      className={`px-2 py-0.5 rounded ${
-                        pushUpType === 'ginocchia' ? 'bg-accent text-accent-contrast font-bold' : 'text-muted-txt'
-                      }`}
-                    >
-                      Ginocchia
-                    </button>
-                  </div>
-                </div>
-                <p className="text-[11px] text-muted-txt">
-                  Petto tocca leggermente a terra, blocco articolare completo in alto.
-                </p>
-                <input
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={pushUp}
-                  onChange={(e) => setPushUp(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-lg bg-elevated border border-subtle text-txt tabular-nums"
-                  placeholder="Numero ripetizioni"
-                />
-              </div>
-
-              {/* Test 2: Trazioni & Dead Hang */}
-              <div className="p-3.5 rounded-xl bg-surface border border-subtle space-y-2">
-                <span className="text-sm font-semibold text-txt">2. Massimo Trazioni (Pull-up)</span>
-                <p className="text-[11px] text-muted-txt">
-                  Da braccia completamente distese a mento sopra la sbarra, senza slanci.
-                </p>
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={pullUp}
-                  onChange={(e) => setPullUp(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-lg bg-elevated border border-subtle text-txt tabular-nums"
-                  placeholder="Trazioni consecutive"
-                />
-                {Number(pullUp) === 0 && (
-                  <div className="pt-2 border-t border-subtle space-y-1">
-                    <label className="block text-[11px] text-rest font-medium">
-                      Hai fatto 0 trazioni: quanti secondi riesci a restare appeso (Dead Hang)?
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={300}
-                      value={deadHangSec}
-                      onChange={(e) => setDeadHangSec(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full h-11 px-3 rounded-lg bg-elevated border border-subtle text-txt tabular-nums"
-                      placeholder="Secondi in dead hang"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Test 3: Squat */}
-              <div className="p-3.5 rounded-xl bg-surface border border-subtle space-y-2">
-                <span className="text-sm font-semibold text-txt">3. Massimo Squat a corpo libero</span>
-                <p className="text-[11px] text-muted-txt">
-                  Accosciata sotto il parallelo, talloni saldi a terra, estensione d’anca completa.
-                </p>
-                <input
-                  type="number"
-                  min={0}
-                  max={200}
-                  value={squat}
-                  onChange={(e) => setSquat(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-lg bg-elevated border border-subtle text-txt tabular-nums"
-                  placeholder="Numero squat"
-                />
-              </div>
-
-              {/* Test 4: Plank */}
-              <div className="p-3.5 rounded-xl bg-surface border border-subtle space-y-2">
-                <span className="text-sm font-semibold text-txt">4. Tenuta massima Plank (secondi)</span>
-                <p className="text-[11px] text-muted-txt">
-                  Avambracci a terra, glutei stretti e addome attivo. Stop se il bacino cede.
-                </p>
-                <input
-                  type="number"
-                  min={0}
-                  max={600}
-                  value={plankSec}
-                  onChange={(e) => setPlankSec(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-lg bg-elevated border border-subtle text-txt tabular-nums"
-                  placeholder="Secondi tenuta plank"
-                />
-              </div>
-
-              {/* Test 5: Dip o Row */}
-              <div className="p-3.5 rounded-xl bg-surface border border-subtle space-y-2">
-                <span className="text-sm font-semibold text-txt">
-                  5. Massimo {dipOrRowType === 'dip' ? 'Dip alle parallele / sedia' : 'Row orizzontali'}
-                </span>
-                <p className="text-[11px] text-muted-txt">
-                  {dipOrRowType === 'dip'
-                    ? 'Discesa a 90° al gomito, estensione completa in alto.'
-                    : 'Petto tocca la sbarra o tavolo, corpo dritto in asse.'}
-                </p>
-                <input
-                  type="number"
-                  min={0}
-                  max={80}
-                  value={dipOrRow}
-                  onChange={(e) => setDipOrRow(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-lg bg-elevated border border-subtle text-txt tabular-nums"
-                  placeholder={`Numero di ${dipOrRowType === 'dip' ? 'dip' : 'row'}`}
-                />
-              </div>
-
-              {/* Test 6: Hollow hold (saltabile) */}
-              <div className="p-3.5 rounded-xl bg-surface border border-subtle space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-txt">6. Hollow Hold (opzionale)</span>
-                  <span className="text-[10px] text-muted-txt">Saltabile</span>
-                </div>
-                <p className="text-[11px] text-muted-txt">
-                  Schiena lombare schiacciata al suolo, braccia e gambe tese a pochi cm da terra.
-                </p>
-                <input
-                  type="number"
-                  min={0}
-                  max={300}
-                  value={hollowHoldSec}
-                  onChange={(e) => setHollowHoldSec(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-lg bg-elevated border border-subtle text-txt tabular-nums"
-                  placeholder="Secondi hollow hold"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={handleCalculateResults}
-              disabled={pushUp === '' || pullUp === '' || squat === '' || plankSec === '' || dipOrRow === ''}
-              className="w-full min-h-[50px] rounded-2xl bg-accent text-accent-contrast font-bold text-base flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-40"
-            >
-              <span>Elabora i risultati</span>
-              <IconChevronRight size={18} />
-            </button>
-          </div>
+          <TestFisiciStep
+            dipOrRowType={dipOrRowType}
+            onIndietro={() => setStep(8)}
+            onCompleta={(r) => {
+              setPushUp(r.pushUp);
+              setPushUpType(r.pushUpType);
+              setPullUp(r.pullUp);
+              setDeadHangSec(r.deadHangSec);
+              setSquat(r.squat);
+              setPlankSec(r.plankSec);
+              setDipOrRow(r.dipOrRow);
+              setTestStimati(r.stimati);
+              calcolaRisultati(r);
+            }}
+          />
         )}
 
         {/* STEP 10: Risultati e Livelli Calcolati */}
@@ -981,6 +786,19 @@ export function OnboardingWizard() {
                 Valori di riferimento per sesso ed età, non un verdetto.
               </p>
             </div>
+
+            {testStimati.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-surface border border-rest/40 space-y-1">
+                <span className="text-xs font-semibold text-rest">
+                  {testStimati.length === 1 ? 'Un test stimato' : `${testStimati.length} test stimati`}
+                </span>
+                <p className="text-[11px] text-muted-txt leading-relaxed">
+                  Hai risposto "Non lo so" su {testStimati.join(' e ')}: per quei pattern
+                  partiamo dal livello più prudente. Il piano si corregge da solo dopo le prime
+                  sedute, e fra sei settimane l'app ti propone di rifare i test.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
               {(Object.keys(assessmentResult.livelliCalcolati) as Pattern[]).map((pat) => {
