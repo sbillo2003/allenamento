@@ -1,0 +1,21 @@
+# Dipendenze e build
+node_modules/
+build/
+dist/
+coverage/
+
+# Variabili d'ambiente (il .env.example resta tracciato)
+.env*
+!.env.example
+
+# File interni di Google AI Studio
+.aistudio/
+
+# Lockfile alternativo: il progetto usa npm
+bun.lock
+
+# Sistema ed editor
+.DS_Store
+Thumbs.db
+*.log
+.claude/
