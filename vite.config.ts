@@ -5,6 +5,9 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // Percorsi relativi: la stessa build funziona in locale, su GitHub Pages
+    // sotto /allenamento/ e in qualsiasi altro sottopercorso.
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

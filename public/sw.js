@@ -4,14 +4,17 @@
  */
 
 const CACHE_NAME = 'calis-cache-v1';
+// URL relative: si risolvono sullo scope del service worker, quindi
+// funzionano sia alla radice del dominio sia sotto un sottopercorso
+// come /allenamento/ di GitHub Pages.
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/icon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/apple-touch-icon.png'
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -68,7 +71,7 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => {
         // Offline fallback to index.html for navigation requests
         if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
+          return caches.match('./index.html');
         }
       });
     })
