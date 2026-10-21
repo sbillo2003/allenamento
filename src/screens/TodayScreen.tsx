@@ -5,22 +5,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp, ACTIVE_SESSION_STORAGE_KEY } from '../store/AppContext';
-import { EXERCISES, PATTERN_NAMES } from '../data/exercises';
-import { WARMUP_ROUTINE, calculateRealSessionDurationMinutes } from '../logic/generator';
+import { calculateRealSessionDurationMinutes } from '../logic/generator';
 import { checkNeedRetest } from '../logic/progression';
-import { RecuperoCard } from '../components/RecuperoCard';
-import { calcolaRecupero, avvisiPerSeduta } from '../logic/recupero';
-import { distrettiDiPiuEsercizi, NOMI_DISTRETTI } from '../data/muscoli';
+import { scarichiDellaSeduta } from '../logic/recupero';
+import { fasePiano } from '../logic/settimana';
+import { messaggioCoach } from '../logic/coach';
+import { NOMI_DISTRETTI } from '../data/muscoli';
 import { PlannedSession, WorkoutLog, ActiveWorkoutState } from '../types';
-import {
-  IconPlay,
-  IconCheck,
-  IconFlame,
-  IconInfo,
-  IconChevronRight,
-  IconTrophy,
-  IconRefresh
-} from '../components/Icons';
+import { HeroSettimana, GiornoSettimana } from '../components/home/HeroSettimana';
+import { SchedaOggi } from '../components/home/SchedaOggi';
+import { RiquadriHome } from '../components/home/RiquadriHome';
+import { IconFlame, IconChevronRight, IconTrophy } from '../components/Icons';
 
 interface TodayScreenProps {
   onStartWorkout: (session: PlannedSession, resumeState?: ActiveWorkoutState | null) => void;
@@ -147,9 +142,34 @@ export function TodayScreen({ onStartWorkout, onOpenRetest }: TodayScreenProps) 
     setActiveSession(null);
   };
 
+  // Giorni della settimana per l'hero
+  const giorni: GiornoSettimana[] = daysLabels.map((etichetta, idx) => ({
+    etichetta,
+    oggi: idx + 1 === currentDayOfWeek,
+    completato: completedDaysThisWeek.has(idx + 1),
+    previsto: !!plan?.sessions.some((x) => x.giorno === idx + 1)
+  }));
+
+  const faseBreve = fasePiano(plan?.settimanaCorrente || 1).breve;
+
+  const messaggio = messaggioCoach({
+    nome: profile?.nome || 'Atleta',
+    sessioneInSospeso: !!activeSession,
+    nessunAllenamentoFatto: workouts.length === 0,
+    settimanaCiclo: plan?.settimanaCorrente || 1,
+    sessioniFatte: completedSessionsCount,
+    sessioniObiettivo: targetSessionsCount,
+    sessioneOggi: plannedToday?.nome ?? null,
+    oggiGiaAllenato: completedDaysThisWeek.has(currentDayOfWeek),
+    distrettiScarichi: plannedToday
+      ? scarichiDellaSeduta(plannedToday, workouts).map((x) => NOMI_DISTRETTI[x.distretto])
+      : [],
+    minutiStimati: plannedToday ? calculateRealSessionDurationMinutes(plannedToday) : 0
+  });
+
   return (
-    <div className="space-y-6 pb-24">
-      {/* 1. Header con Data e Streak Settimanale Reale */}
+    <div className="space-y-4 pb-24">
+      {/* Intestazione */}
       <div className="flex justify-between items-end pt-2">
         <div>
           <span className="text-xs font-semibold text-muted-txt uppercase tracking-wider">
@@ -161,14 +181,25 @@ export function TodayScreen({ onStartWorkout, onOpenRetest }: TodayScreenProps) 
         </div>
 
         {weeklyStreak > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-elevated border border-subtle text-accent text-xs font-bold tabular-nums">
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-elevated border border-subtle text-accent text-xs font-bold tabular-nums"
+            aria-label={`${weeklyStreak} ${weeklyStreak === 1 ? 'settimana' : 'settimane'} di serie`}
+          >
             <IconFlame size={16} />
-            <span>{weeklyStreak} {weeklyStreak === 1 ? 'settimana di serie' : 'settimane di serie'}</span>
+            <span>{weeklyStreak} sett.</span>
           </div>
         )}
       </div>
 
-      {/* 2. Banner Ripresa Sessione Interrotta (se salvata in localStorage) */}
+      {/* Coach: una frase sola, la prima regola che scatta */}
+      <p className="text-sm leading-relaxed text-txt">
+        <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-muted-txt">
+          Coach
+        </span>
+        {messaggio}
+      </p>
+
+      {/* Sessione interrotta */}
       {activeSession && (
         <div className="p-4 rounded-[20px] bg-elevated border border-accent space-y-3">
           <div className="flex items-center justify-between">
@@ -180,7 +211,7 @@ export function TodayScreen({ onStartWorkout, onOpenRetest }: TodayScreenProps) 
             </span>
           </div>
           <p className="text-xs text-txt leading-relaxed">
-            Hai interrotto l'allenamento per <span className="font-semibold text-accent">{activeSession.session.nome}</span>. Vuoi riprenderlo esattamente da dove avevi lasciato?
+            {activeSession.session.nome}: riprendi esattamente da dove avevi lasciato.
           </p>
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
@@ -201,194 +232,47 @@ export function TodayScreen({ onStartWorkout, onOpenRetest }: TodayScreenProps) 
         </div>
       )}
 
-      {/* 3. Scheda Ri-Test Fisico (quando sono passate 6 settimane) */}
+      {/* Ri-test dovuto */}
       {isRetestDue && onOpenRetest && (
-        <div className="p-4 rounded-[20px] bg-accent/10 border border-accent/40 space-y-3">
-          <div className="flex items-center gap-2 text-accent text-xs font-bold uppercase tracking-wider">
-            <IconTrophy size={16} />
-            <span>Tempo di Ri-Test (6 settimane passate)</span>
-          </div>
-          <p className="text-xs text-txt leading-relaxed">
-            Sono trascorse più di 6 settimane dal tuo ultimo test massimale. Esegui il ri-test per misurare i tuoi progressi di forza reali e aggiornare i pattern motori.
-          </p>
-          <button
-            onClick={onOpenRetest}
-            className="w-full min-h-[44px] rounded-xl bg-accent text-accent-contrast font-bold text-xs flex items-center justify-center gap-2 hover:opacity-95 active:scale-95 transition-all"
-          >
-            <span>Avvia Ri-Test Fisico</span>
-            <IconChevronRight size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* 4. Striscia dei 7 giorni della settimana */}
-      <div className="p-3.5 rounded-[20px] bg-surface border border-subtle space-y-2">
-        <div className="flex justify-between items-center text-xs text-muted-txt">
-          <span>Settimana {plan?.settimanaCorrente || 1} di 5</span>
-          <span className="tabular-nums font-semibold text-txt">
-            {completedSessionsCount} / {targetSessionsCount} sessioni
+        <button
+          type="button"
+          onClick={onOpenRetest}
+          className="w-full p-4 rounded-[20px] flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+          style={{
+            background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)'
+          }}
+        >
+          <span className="text-accent shrink-0">
+            <IconTrophy size={20} />
           </span>
-        </div>
-
-        <div className="grid grid-cols-7 gap-1.5 pt-1">
-          {daysLabels.map((lbl, idx) => {
-            const dayNum = idx + 1;
-            const isToday = dayNum === currentDayOfWeek;
-            const isCompleted = completedDaysThisWeek.has(dayNum);
-            const hasPlan = plan?.sessions.some((s) => s.giorno === dayNum);
-
-            return (
-              <div
-                key={lbl}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all ${
-                  isToday
-                    ? 'border-2 border-accent bg-elevated'
-                    : 'bg-elevated/40 border border-subtle'
-                }`}
-              >
-                <span className="text-[10px] text-muted-txt font-medium">{lbl}</span>
-                <span className="w-5 h-5 flex items-center justify-center mt-1">
-                  {isCompleted ? (
-                    <span className="w-4 h-4 rounded-full bg-accent text-accent-contrast flex items-center justify-center">
-                      <IconCheck size={11} />
-                    </span>
-                  ) : hasPlan ? (
-                    <span className="w-2 h-2 rounded-full bg-muted-txt/50" />
-                  ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-subtle" />
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Recupero muscolare */}
-      <RecuperoCard workouts={workouts} />
-
-      {/* 5. Scheda Allenamento di Oggi */}
-      {!isRestDay && plannedToday ? (
-        <div className="p-5 rounded-[20px] bg-surface border border-subtle space-y-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-xs font-semibold text-accent uppercase tracking-wider">
-                Allenamento in programma
-              </span>
-              <h2 className="text-xl font-bold text-txt mt-0.5">{plannedToday.nome}</h2>
-            </div>
-            <div className="text-right">
-              <span className="text-xs text-muted-txt font-medium">Stima reale</span>
-              <div className="text-sm font-bold text-txt tabular-nums">
-                ~{calculateRealSessionDurationMinutes(plannedToday)} min
-              </div>
-            </div>
-          </div>
-
-          {/* Avviso: distretti della seduta ancora scarichi */}
-          {(() => {
-            const esercizi = plannedToday.blocks
-              .map((b) => EXERCISES.find((e) => e.id === b.exerciseId))
-              .filter((e): e is NonNullable<typeof e> => !!e);
-            const primari = distrettiDiPiuEsercizi(esercizi).primari;
-            const scarichi = avvisiPerSeduta(calcolaRecupero(workouts), primari);
-            if (scarichi.length === 0) return null;
-            const elenco =
-              scarichi
-                .slice(0, 3)
-                .map((x) => `${NOMI_DISTRETTI[x.distretto].toLowerCase()} al ${x.percentuale}%`)
-                .join(', ') + (scarichi.length > 3 ? ` e altri ${scarichi.length - 3}` : '');
-            return (
-              <div className="p-3 rounded-xl bg-elevated border border-error/40 text-xs leading-relaxed">
-                <span className="font-semibold text-error">Muscoli ancora scarichi: </span>
-                <span className="text-muted-txt">
-                  {elenco}. Puoi allenarti lo stesso, ma se hai margine conviene aspettare.
-                </span>
-              </div>
-            );
-          })()}
-
-          {/* Elenco compatto esercizi */}
-          <div className="space-y-2 pt-1 border-t border-subtle">
-            <div className="text-xs font-semibold text-muted-txt mb-2">
-              Esercizi previsti ({plannedToday.blocks.length}):
-            </div>
-            {plannedToday.blocks.map((b, idx) => {
-              const ex = EXERCISES.find((e) => e.id === b.exerciseId);
-              if (!ex) return null;
-              return (
-                <div key={idx} className="flex justify-between items-center py-1.5 border-b border-subtle/50 text-xs">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="text-muted-txt tabular-nums font-mono w-4">{idx + 1}.</span>
-                    <span className="font-medium text-txt truncate">{ex.nome}</span>
-                  </div>
-                  <span className="text-muted-txt tabular-nums shrink-0 font-medium ml-2">
-                    {b.serie} × {ex.tipo === 'tempo' ? `${b.secondi}s` : `${b.repMin}-${b.repMax}`}
-                    {ex.unilaterale && ' (lato)'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <button
-            onClick={() => onStartWorkout(plannedToday)}
-            className="w-full min-h-[52px] rounded-2xl bg-accent text-accent-contrast font-bold text-base flex items-center justify-center gap-2 shadow-sm hover:opacity-95 active:scale-[0.98] transition-all"
-          >
-            <IconPlay size={18} />
-            <span>Inizia allenamento</span>
-          </button>
-        </div>
-      ) : (
-        /* Giorno di Riposo */
-        <div className="p-5 rounded-[20px] bg-surface border border-subtle space-y-4">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-rest uppercase tracking-wider">
-              Giorno di Riposo Attivo
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-txt">Tempo di ri-test</span>
+            <span className="block text-[11px] text-muted-txt">
+              Misura i progressi e aggiorna i livelli.
             </span>
-            <h2 className="text-xl font-bold text-txt">Recupero e Adattamento</h2>
-            <p className="text-xs text-muted-txt leading-relaxed">
-              La sintesi proteica e la crescita della forza avvengono durante il riposo. Dedica 10 minuti alla mobilità articolare.
-            </p>
-          </div>
-
-          {/* Suggerimenti di mobilità */}
-          <div className="p-3.5 rounded-xl bg-elevated border border-subtle space-y-2 text-xs">
-            <span className="font-semibold text-txt">Routine di scarico consigliata:</span>
-            <ul className="space-y-1.5 text-muted-txt list-disc list-inside">
-              {WARMUP_ROUTINE.slice(0, 3).map((w, idx) => (
-                <li key={idx}>
-                  <span className="text-txt font-medium">{w.nome}</span> ({w.durataSec}s)
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="pt-2">
-            <div className="text-xs text-muted-txt text-center mb-2">Vuoi allenarti comunque oggi?</div>
-            {firstUncompletedSession && (
-              <button
-                onClick={() => onStartWorkout(firstUncompletedSession)}
-                className="w-full min-h-[48px] rounded-xl bg-elevated border border-accent text-accent font-bold text-sm flex items-center justify-center gap-2 hover:bg-surface active:scale-[0.98] transition-all"
-              >
-                <span>Allenati lo stesso ({firstUncompletedSession.nome})</span>
-                <IconChevronRight size={16} />
-              </button>
-            )}
-          </div>
-        </div>
+          </span>
+          <span className="text-accent shrink-0">
+            <IconChevronRight size={18} />
+          </span>
+        </button>
       )}
 
-      {/* 6. Struttura del ciclo */}
-      <div className="p-4 rounded-[20px] bg-elevated border border-subtle flex items-start gap-3 text-xs">
-        <IconInfo size={18} className="text-accent shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <span className="font-semibold text-txt">Struttura del Ciclo (5 Settimane):</span>
-          <p className="text-muted-txt leading-relaxed">
-            Sei nella Settimana {plan?.settimanaCorrente || 1}. Alla settimana 3 e 4 aumentiamo le serie sui fondamentali; la settimana 5 prevede scarico al -40% prima del nuovo test massimale.
-          </p>
-        </div>
-      </div>
+      <HeroSettimana
+        fatte={completedSessionsCount}
+        obiettivo={targetSessionsCount}
+        giorni={giorni}
+      />
+
+      <SchedaOggi
+        oggi={plannedToday}
+        primaNonFatta={firstUncompletedSession}
+        workouts={workouts}
+        faseBreve={faseBreve}
+        onInizia={onStartWorkout}
+      />
+
+      <RiquadriHome workouts={workouts} settimanaCiclo={plan?.settimanaCorrente || 1} />
     </div>
   );
 }

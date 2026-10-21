@@ -11,9 +11,9 @@
  * Il recupero cresce in modo lineare dal momento dell'allenamento.
  */
 
-import { WorkoutLog } from '../types';
+import { PlannedSession, WorkoutLog } from '../types';
 import { EXERCISES } from '../data/exercises';
-import { Distretto, NOMI_DISTRETTI, distrettiDi } from '../data/muscoli';
+import { Distretto, NOMI_DISTRETTI, distrettiDi, distrettiDiPiuEsercizi } from '../data/muscoli';
 
 export type StatoRecupero = 'pronto' | 'in_recupero' | 'da_recuperare';
 
@@ -128,4 +128,17 @@ export function avvisiPerSeduta(
     .map((d) => r[d])
     .filter((x) => x.stato === 'da_recuperare')
     .sort((a, b) => a.percentuale - b.percentuale);
+}
+
+/** Distretti primari della seduta che risultano ancora scarichi. */
+export function scarichiDellaSeduta(
+  sessione: PlannedSession,
+  workouts: WorkoutLog[],
+  ora: Date = new Date()
+): RecuperoDistretto[] {
+  const esercizi = sessione.blocks
+    .map((b) => EXERCISES.find((e) => e.id === b.exerciseId))
+    .filter((e): e is NonNullable<typeof e> => !!e);
+  const primari = distrettiDiPiuEsercizi(esercizi).primari;
+  return avvisiPerSeduta(calcolaRecupero(workouts, ora), primari);
 }

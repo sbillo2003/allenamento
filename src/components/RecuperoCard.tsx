@@ -55,11 +55,11 @@ function coloriDa(r: Record<Distretto, RecuperoDistretto>): Partial<Record<Distr
   return colori;
 }
 
-function Arco({ valore, colore }: { valore: number; colore: string }) {
+function Arco({ valore, colore, larghezza = 104 }: { valore: number; colore: string; larghezza?: number }) {
   const raggio = 40;
   const lunghezza = Math.PI * raggio;
   return (
-    <svg width="104" height="62" viewBox="0 0 104 62" aria-hidden="true">
+    <svg width={larghezza} height={(larghezza * 62) / 104} viewBox="0 0 104 62" aria-hidden="true">
       <path
         d="M 12 54 A 40 40 0 0 1 92 54"
         fill="none"
@@ -81,7 +81,14 @@ function Arco({ valore, colore }: { valore: number; colore: string }) {
   );
 }
 
-export function RecuperoCard({ workouts }: { workouts: WorkoutLog[] }) {
+export function RecuperoCard({
+  workouts,
+  variante = 'riquadro'
+}: {
+  workouts: WorkoutLog[];
+  /** 'tile' e' la versione stretta per la fila di tre riquadri della home. */
+  variante?: 'riquadro' | 'tile';
+}) {
   const [aperto, setAperto] = useState(false);
 
   const recupero = useMemo(() => calcolaRecupero(workouts), [workouts]);
@@ -91,6 +98,41 @@ export function RecuperoCard({ workouts }: { workouts: WorkoutLog[] }) {
   const statoGenerale: StatoRecupero =
     complessivo >= 90 ? 'pronto' : complessivo >= 60 ? 'in_recupero' : 'da_recuperare';
   const coloreGenerale = COLORE_STATO[statoGenerale];
+
+  const pannello =
+    aperto &&
+    // Portale sul body: dentro <main> la barra di navigazione finiva sopra il pannello
+    createPortal(
+      <PannelloRecupero recupero={recupero} onChiudi={() => setAperto(false)} />,
+      document.body
+    );
+
+  if (variante === 'tile') {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setAperto(true)}
+          className="w-full h-full text-left p-3 rounded-[20px] bg-surface border border-subtle flex flex-col active:scale-[0.98] transition-transform"
+          aria-label="Apri il dettaglio del recupero muscolare"
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-txt">
+            Recupero
+          </span>
+          <span className="relative mt-2 mx-auto" style={{ width: 84, height: 50 }}>
+            <Arco valore={complessivo} colore={coloreGenerale} larghezza={84} />
+            <span className="absolute inset-x-0 bottom-0 text-center text-base font-bold tabular-nums text-txt">
+              {complessivo}%
+            </span>
+          </span>
+          <span className="mt-2 text-[11px] leading-snug text-muted-txt">
+            {esitoBreve(complessivo, scarichi)}
+          </span>
+        </button>
+        {pannello}
+      </>
+    );
+  }
 
   return (
     <>
@@ -119,12 +161,7 @@ export function RecuperoCard({ workouts }: { workouts: WorkoutLog[] }) {
         <MuscleMap colori={colori} vista="entrambe" altezza={64} />
       </button>
 
-      {/* Portale sul body: dentro <main> la barra di navigazione finiva sopra il pannello */}
-      {aperto &&
-        createPortal(
-          <PannelloRecupero recupero={recupero} onChiudi={() => setAperto(false)} />,
-          document.body
-        )}
+      {pannello}
     </>
   );
 }

@@ -114,7 +114,7 @@ Rispetto alla prima ipotesi (48 ore per un carico leggero) l'intervallo parte da
 Alimenta: la schermata fronte/retro, il riquadro in home, e un suggerimento quando stai per allenare un distretto ancora scarico.
 
 ### M4 — Home ridisegnata
-Numero principale con alone radiale, tre riquadri affiancati (recupero, volume settimanale, serie), riga del coach, scheda sessione con mappa muscolare e riga di metadati.
+**Fatto.** Ordine dall'alto: intestazione, riga del coach (una frase, la prima regola che scatta, in `src/logic/coach.ts`), hero con il numero delle sessioni in un anello con alone caldo, scheda di oggi con sagoma dei muscoli, riga di metadati e pulsante subito sotto, poi tre riquadri (recupero, serie della settimana rispetto allo stesso punto della scorsa, fase del ciclo). Il pulsante "Inizia allenamento" resta visibile senza scorrere su uno schermo da 375×812.
 
 ### M5 — Rifiniture
 Selettore di periodo sui grafici, scheda serie a sfumatura, barra di navigazione a pillola galleggiante, righe esercizio con miniatura del distretto.
@@ -128,3 +128,9 @@ Selettore di periodo sui grafici, scheda serie a sfumatura, barra di navigazione
 In più è già successo: l'ultima volta la quota si è esaurita a metà del terzo giro e i componenti sono arrivati scritti ma non collegati.
 
 AI Studio è stato lo strumento giusto per partire da zero in un colpo solo. Per modifiche mirate a codice che esiste, la strada è qui: una modifica alla volta, verificata nel browser, con un commit per intervento e la possibilità di tornare indietro.
+
+---
+
+## 5. Problemi noti
+
+- **Classi con modificatore di opacità inattive.** Nel codice preesistente ci sono una ventina di classi come `bg-accent/10` o `border-error/40` che non producono nessuno stile: i colori sono variabili CSS e non sono registrati nel tema di Tailwind, quindi il modificatore `/NN` non ha niente da calcolare. Nel codice nuovo si usa `color-mix(in srgb, var(--color-...) NN%, transparent)`. Correggere le classi vecchie richiede di decidere come registrare i colori senza rompere il cambio tema.
