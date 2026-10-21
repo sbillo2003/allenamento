@@ -5,16 +5,23 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
-import { VolumeBarChart, RadarPatternChart, DoubleLineBodyChart } from '../components/Charts';
+import {
+  VolumeBarChart,
+  RadarPatternChart,
+  DoubleLineBodyChart,
+  CalendarHeatmapChart,
+  getSignificantChangeSummary
+} from '../components/Charts';
+import { ProgressionTree } from '../components/ProgressionTree';
 import { EXERCISES } from '../data/exercises';
 import { WorkoutLog } from '../types';
 import { IconTrophy, IconClose, IconChevronRight } from '../components/Icons';
 
 export function ProgressScreen() {
   const { state } = useApp();
-  const { workouts, levels, assessments, measurements } = state;
+  const { workouts, levels, assessments, measurements, profile } = state;
 
-  const [activeTab, setActiveTab] = useState<'grafici' | 'pr' | 'storico'>('grafici');
+  const [activeTab, setActiveTab] = useState<'grafici' | 'percorso' | 'pr' | 'storico'>('grafici');
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutLog | null>(null);
   const [historyFilter, setHistoryFilter] = useState<'tutti' | '30gg' | 'anno'>('tutti');
 
@@ -94,7 +101,7 @@ export function ProgressScreen() {
         </div>
 
         {/* Segmented Control */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-surface rounded-xl border border-subtle text-xs">
+        <div className="grid grid-cols-4 gap-1 p-1 bg-surface rounded-xl border border-subtle text-[11px]">
           <button
             onClick={() => setActiveTab('grafici')}
             className={`py-2 rounded-lg font-semibold transition-all ${
@@ -104,6 +111,16 @@ export function ProgressScreen() {
             }`}
           >
             Grafici
+          </button>
+          <button
+            onClick={() => setActiveTab('percorso')}
+            className={`py-2 rounded-lg font-semibold transition-all ${
+              activeTab === 'percorso'
+                ? 'bg-elevated text-accent border border-subtle'
+                : 'text-muted-txt hover:text-txt'
+            }`}
+          >
+            Percorso
           </button>
           <button
             onClick={() => setActiveTab('pr')}
@@ -131,6 +148,16 @@ export function ProgressScreen() {
       {/* TAB 1: GRAFICI SVG */}
       {activeTab === 'grafici' && (
         <div className="space-y-6">
+          {/* Riga di sintesi: il cambiamento piu' significativo del periodo */}
+          <div className="p-4 rounded-[20px] bg-elevated border border-accent/30">
+            <span className="text-[10px] font-semibold text-accent uppercase tracking-wider">
+              In sintesi
+            </span>
+            <p className="text-sm text-txt leading-relaxed mt-1">
+              {getSignificantChangeSummary(workouts, levels, initialLevels)}
+            </p>
+          </div>
+
           {/* Grafico 1: Volume settimanale a barre */}
           <div className="p-4 rounded-[20px] bg-surface border border-subtle space-y-3">
             <div>
@@ -163,6 +190,35 @@ export function ProgressScreen() {
             </div>
             <DoubleLineBodyChart measurements={measurements} />
           </div>
+
+          {/* Grafico 4: Mappa a calendario degli ultimi tre mesi */}
+          <div className="p-4 rounded-[20px] bg-surface border border-subtle space-y-3">
+            <div>
+              <h2 className="text-sm font-bold text-txt">Costanza</h2>
+              <p className="text-[11px] text-muted-txt">
+                Un quadratino per giorno negli ultimi tre mesi, colorato in base al volume.
+              </p>
+            </div>
+            <CalendarHeatmapChart workouts={workouts} />
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: ALBERO DELLE PROGRESSIONI */}
+      {activeTab === 'percorso' && (
+        <div className="space-y-3">
+          <div className="px-1">
+            <p className="text-[11px] text-muted-txt leading-relaxed">
+              Ogni pattern e' una scala: i livelli superati sono pieni, quello attuale e'
+              evidenziato, i successivi si sbloccano progredendo. Tocca un nodo per vedere
+              istruzioni, criterio di sblocco e il tuo storico su quell'esercizio.
+            </p>
+          </div>
+          <ProgressionTree
+            currentLevels={levels}
+            userEquipment={profile?.attrezzatura || []}
+            workouts={workouts}
+          />
         </div>
       )}
 
