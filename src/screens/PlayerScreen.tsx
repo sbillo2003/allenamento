@@ -660,12 +660,13 @@ export function PlayerScreen({ session, onClose, resumedState }: PlayerProps) {
                   </>
                 )}
 
-                {/* Riferimento all'ultima volta eseguito */}
-                <div className="text-[11px] text-muted-txt mt-1">
-                  Ultima volta:{' '}
-                  <span className="text-txt font-medium">{lastHistoryDisplay}</span>
-                </div>
               </div>
+            </div>
+
+            {/* Riferimento all'ultima volta: fuori dall'anello, dove ha spazio
+                per andare a capo senza sovrapporsi al tracciato */}
+            <div className="mt-4 px-6 text-center text-[11px] leading-snug text-muted-txt">
+              Ultima volta: <span className="text-txt font-medium">{lastHistoryDisplay}</span>
             </div>
 
             {/* Selettori ripetizioni / tempo */}
