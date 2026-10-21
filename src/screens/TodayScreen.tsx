@@ -8,6 +8,9 @@ import { useApp, ACTIVE_SESSION_STORAGE_KEY } from '../store/AppContext';
 import { EXERCISES, PATTERN_NAMES } from '../data/exercises';
 import { WARMUP_ROUTINE, calculateRealSessionDurationMinutes } from '../logic/generator';
 import { checkNeedRetest } from '../logic/progression';
+import { RecuperoCard } from '../components/RecuperoCard';
+import { calcolaRecupero, avvisiPerSeduta } from '../logic/recupero';
+import { distrettiDiPiuEsercizi, NOMI_DISTRETTI } from '../data/muscoli';
 import { PlannedSession, WorkoutLog, ActiveWorkoutState } from '../types';
 import {
   IconPlay,
@@ -261,6 +264,9 @@ export function TodayScreen({ onStartWorkout, onOpenRetest }: TodayScreenProps) 
         </div>
       </div>
 
+      {/* Recupero muscolare */}
+      <RecuperoCard workouts={workouts} />
+
       {/* 5. Scheda Allenamento di Oggi */}
       {!isRestDay && plannedToday ? (
         <div className="p-5 rounded-[20px] bg-surface border border-subtle space-y-4">
@@ -278,6 +284,29 @@ export function TodayScreen({ onStartWorkout, onOpenRetest }: TodayScreenProps) 
               </div>
             </div>
           </div>
+
+          {/* Avviso: distretti della seduta ancora scarichi */}
+          {(() => {
+            const esercizi = plannedToday.blocks
+              .map((b) => EXERCISES.find((e) => e.id === b.exerciseId))
+              .filter((e): e is NonNullable<typeof e> => !!e);
+            const primari = distrettiDiPiuEsercizi(esercizi).primari;
+            const scarichi = avvisiPerSeduta(calcolaRecupero(workouts), primari);
+            if (scarichi.length === 0) return null;
+            const elenco =
+              scarichi
+                .slice(0, 3)
+                .map((x) => `${NOMI_DISTRETTI[x.distretto].toLowerCase()} al ${x.percentuale}%`)
+                .join(', ') + (scarichi.length > 3 ? ` e altri ${scarichi.length - 3}` : '');
+            return (
+              <div className="p-3 rounded-xl bg-elevated border border-error/40 text-xs leading-relaxed">
+                <span className="font-semibold text-error">Muscoli ancora scarichi: </span>
+                <span className="text-muted-txt">
+                  {elenco}. Puoi allenarti lo stesso, ma se hai margine conviene aspettare.
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Elenco compatto esercizi */}
           <div className="space-y-2 pt-1 border-t border-subtle">

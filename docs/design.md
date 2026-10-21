@@ -107,7 +107,9 @@ Titolo con la parola chiave a colore, sottotitolo di una riga, mappa muscolare d
 Nota: le fasce vanno convertite in un numero per la nostra logica dei livelli. Uso il centro della fascia (`10-20` → 15), e `Non lo so` porta a un mini-test guidato invece che a un valore inventato.
 
 ### M3 — Recupero muscolare
-Modello semplice e dichiarato: un distretto allenato torna al 100% in 48 ore se il carico è stato leggero, 72 se pesante, con recupero lineare nel mezzo. Si calcola dallo storico che abbiamo già.
+**Fatto.** Modello semplice e dichiarato, in `src/logic/recupero.ts`: ogni seduta lascia su un distretto una dose di serie pesate (primario 1, secondario 0.4) e la dose fissa le ore di recupero, da 24 (tocco leggero) a 72 (carico pesante), con recupero lineare. Per ogni distretto vale la seduta che lo lascia più scarico; sedute oltre sette giorni non contano. Soglie: da 90% pronto, da 60% in recupero, sotto da recuperare.
+
+Rispetto alla prima ipotesi (48 ore per un carico leggero) l'intervallo parte da 24: un tocco da una o due serie su un muscolo secondario non può richiedere due giorni.
 
 Alimenta: la schermata fronte/retro, il riquadro in home, e un suggerimento quando stai per allenare un distretto ancora scarico.
 
