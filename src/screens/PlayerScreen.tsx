@@ -15,6 +15,7 @@ import {
   ActiveWorkoutState
 } from '../types';
 import { EXERCISES, PATTERN_NAMES } from '../data/exercises';
+import { WARMUP_ROUTINE } from '../logic/generator';
 import { useApp, ACTIVE_SESSION_STORAGE_KEY } from '../store/AppContext';
 import {
   playCountdownBeep,
@@ -44,6 +45,15 @@ interface PlayerProps {
 export function PlayerScreen({ session, onClose, resumedState }: PlayerProps) {
   const { state, dispatch } = useApp();
   const { settings, workouts } = state;
+
+  // Il riscaldamento si salta quando si riprende una sessione interrotta:
+  // chi riprende l'ha gia' fatto.
+  const [fase, setFase] = useState<'riscaldamento' | 'allenamento'>(
+    resumedState ? 'allenamento' : 'riscaldamento'
+  );
+  const [warmupIndex, setWarmupIndex] = useState(0);
+  const [warmupRemaining, setWarmupRemaining] = useState(WARMUP_ROUTINE[0].durataSec);
+  const warmupEndTimeRef = useRef<number>(Date.now() + WARMUP_ROUTINE[0].durataSec * 1000);
 
   // Session state (resumed or initial)
   const [currentBlockIndex, setCurrentBlockIndex] = useState(
@@ -144,6 +154,38 @@ export function PlayerScreen({ session, onClose, resumedState }: PlayerProps) {
     }, 1000);
     return () => clearInterval(interval);
   }, [workoutFinished, isPaused]);
+
+  // Conto alla rovescia del riscaldamento. Come per i recuperi, il residuo si
+  // ricava dalla differenza con un timestamp di fine: non si sfasa se la scheda
+  // finisce in background.
+  useEffect(() => {
+    if (fase !== 'riscaldamento') return;
+
+    const aggiorna = () => {
+      const residuo = Math.max(0, Math.round((warmupEndTimeRef.current - Date.now()) / 1000));
+      setWarmupRemaining(residuo);
+
+      if (residuo === 0) {
+        setWarmupIndex((indice) => {
+          if (indice < WARMUP_ROUTINE.length - 1) {
+            const prossimo = indice + 1;
+            warmupEndTimeRef.current = Date.now() + WARMUP_ROUTINE[prossimo].durataSec * 1000;
+            setWarmupRemaining(WARMUP_ROUTINE[prossimo].durataSec);
+            return prossimo;
+          }
+          setFase('allenamento');
+          return indice;
+        });
+      }
+    };
+
+    const interval = setInterval(aggiorna, 500);
+    document.addEventListener('visibilitychange', aggiorna);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', aggiorna);
+    };
+  }, [fase]);
 
   // Rest countdown timer basato sulla differenza tra timestamp di fine e Date.now()
   // Include listener visibilitychange per risincronizzare istantaneamente al ritorno in primo piano
@@ -391,6 +433,102 @@ export function PlayerScreen({ session, onClose, resumedState }: PlayerProps) {
     const s = sec % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
+
+  // SCHERMATA DI RISCALDAMENTO: prima fase guidata, un movimento per volta
+  if (fase === 'riscaldamento') {
+    const movimento = WARMUP_ROUTINE[warmupIndex];
+    const frazione = 1 - warmupRemaining / movimento.durataSec;
+
+    const prossimoMovimento = () => {
+      if (warmupIndex < WARMUP_ROUTINE.length - 1) {
+        const next = warmupIndex + 1;
+        setWarmupIndex(next);
+        setWarmupRemaining(WARMUP_ROUTINE[next].durataSec);
+        warmupEndTimeRef.current = Date.now() + WARMUP_ROUTINE[next].durataSec * 1000;
+      } else {
+        setFase('allenamento');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 bg-[#0A0E13] text-[#F2F6FA] flex flex-col max-w-[480px] mx-auto">
+        <div className="flex items-center justify-between px-4 pt-5 pb-3">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Esci dall'allenamento"
+            className="w-11 h-11 rounded-xl bg-[#1D262F] flex items-center justify-center"
+          >
+            <IconClose size={18} />
+          </button>
+          <div className="text-center">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#8D9BAA]">
+              Riscaldamento
+            </div>
+            <div className="text-xs font-semibold text-[#B8FF3C]">
+              Movimento {warmupIndex + 1} di {WARMUP_ROUTINE.length}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFase('allenamento')}
+            className="h-11 px-3 rounded-xl bg-[#1D262F] text-[11px] font-semibold text-[#8D9BAA]"
+          >
+            Salta tutto
+          </button>
+        </div>
+
+        {/* Barra di avanzamento del riscaldamento */}
+        <div className="px-4">
+          <div className="h-1 rounded-full bg-[#2A3540] overflow-hidden">
+            <div
+              className="h-full bg-[#B8FF3C] transition-all duration-500"
+              style={{ width: `${((warmupIndex + frazione) / WARMUP_ROUTINE.length) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <h2 className="text-2xl font-bold tracking-tight">{movimento.nome}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-[#8D9BAA]">{movimento.istruzione}</p>
+
+          <div className="relative mt-8 flex items-center justify-center">
+            <svg width="200" height="200" viewBox="0 0 200 200" className="-rotate-90">
+              <circle cx="100" cy="100" r="86" stroke="#2A3540" strokeWidth="8" fill="transparent" />
+              <circle
+                cx="100"
+                cy="100"
+                r="86"
+                stroke="#B8FF3C"
+                strokeWidth="8"
+                strokeLinecap="round"
+                fill="transparent"
+                strokeDasharray={2 * Math.PI * 86}
+                strokeDashoffset={2 * Math.PI * 86 * frazione}
+                style={{ transition: 'stroke-dashoffset 1s linear' }}
+              />
+            </svg>
+            <span className="absolute text-6xl font-bold tabular-nums tracking-tighter">
+              {warmupRemaining}
+            </span>
+          </div>
+        </div>
+
+        <div className="px-4 pb-8 space-y-2">
+          <button
+            type="button"
+            onClick={prossimoMovimento}
+            className="w-full min-h-[52px] rounded-2xl bg-[#B8FF3C] text-[#0A0E13] font-bold"
+          >
+            {warmupIndex < WARMUP_ROUTINE.length - 1 ? 'Movimento successivo' : 'Inizia allenamento'}
+          </button>
+          <p className="text-center text-[11px] text-[#8D9BAA]">
+            Il movimento successivo parte da solo a fine conteggio.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // SCHERMATA FINALE: RIEPILOGO ALLENAMENTO
   if (workoutFinished) {
