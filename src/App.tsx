@@ -17,6 +17,13 @@ import { IconToday, IconPlan, IconProgress, IconProfile } from './components/Ico
 
 type Tab = 'oggi' | 'piano' | 'progressi' | 'profilo';
 
+const VOCI: { id: Tab; etichetta: string; Icona: typeof IconToday }[] = [
+  { id: 'oggi', etichetta: 'Oggi', Icona: IconToday },
+  { id: 'piano', etichetta: 'Piano', Icona: IconPlan },
+  { id: 'progressi', etichetta: 'Progressi', Icona: IconProgress },
+  { id: 'profilo', etichetta: 'Profilo', Icona: IconProfile }
+];
+
 function AppContent() {
   const { state, dispatch, isCorrupted, clearCorrupted } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('oggi');
@@ -105,63 +112,42 @@ function AppContent() {
         <RetestScreen onClose={() => setShowRetestModal(false)} />
       )}
 
-      {/* Barra di navigazione in basso fissa con 4 voci */}
+      {/* Barra di navigazione a pillola, galleggiante sopra i contenuti */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t border-subtle pb-safe"
+        className="fixed inset-x-0 z-40 px-4 pointer-events-none"
+        style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}
         aria-label="Navigazione principale"
       >
-        <div className="max-w-[480px] mx-auto grid grid-cols-4 items-center h-16">
-          {/* Tab 1: Oggi */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('oggi')}
-            className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-              activeTab === 'oggi' ? 'text-accent' : 'text-muted-txt hover:text-txt'
-            }`}
-            aria-label="Schermata Oggi"
-          >
-            <IconToday size={20} />
-            <span className="text-[10px] font-semibold tracking-tight mt-1">Oggi</span>
-          </button>
-
-          {/* Tab 2: Piano */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('piano')}
-            className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-              activeTab === 'piano' ? 'text-accent' : 'text-muted-txt hover:text-txt'
-            }`}
-            aria-label="Schermata Piano"
-          >
-            <IconPlan size={20} />
-            <span className="text-[10px] font-semibold tracking-tight mt-1">Piano</span>
-          </button>
-
-          {/* Tab 3: Progressi */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('progressi')}
-            className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-              activeTab === 'progressi' ? 'text-accent' : 'text-muted-txt hover:text-txt'
-            }`}
-            aria-label="Schermata Progressi"
-          >
-            <IconProgress size={20} />
-            <span className="text-[10px] font-semibold tracking-tight mt-1">Progressi</span>
-          </button>
-
-          {/* Tab 4: Profilo */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('profilo')}
-            className={`flex flex-col items-center justify-center h-full min-h-[44px] transition-colors ${
-              activeTab === 'profilo' ? 'text-accent' : 'text-muted-txt hover:text-txt'
-            }`}
-            aria-label="Schermata Profilo"
-          >
-            <IconProfile size={20} />
-            <span className="text-[10px] font-semibold tracking-tight mt-1">Profilo</span>
-          </button>
+        <div
+          className="max-w-[360px] mx-auto grid grid-cols-4 items-center gap-1 p-1.5 rounded-full border border-subtle backdrop-blur-md pointer-events-auto"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-surface) 92%, transparent)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)'
+          }}
+        >
+          {VOCI.map(({ id, etichetta, Icona }) => {
+            const attiva = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                aria-label={`Schermata ${etichetta}`}
+                aria-current={attiva ? 'page' : undefined}
+                className={`flex flex-col items-center justify-center h-12 min-h-[44px] rounded-full transition-colors ${
+                  attiva ? 'text-accent' : 'text-muted-txt hover:text-txt'
+                }`}
+                style={
+                  attiva
+                    ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 14%, transparent)' }
+                    : undefined
+                }
+              >
+                <Icona size={20} />
+                <span className="text-[10px] font-semibold tracking-tight mt-0.5">{etichetta}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
