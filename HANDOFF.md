@@ -8,7 +8,7 @@ Nasce come clone *funzionale* di BetterMe Calisthenics, senza usare nome, grafic
 
 ## Fatto (tutto il 21/10/2026)
 
-Pubblicato su https://sbillo2003.github.io/allenamento/ (repo pubblico `sbillo2003/allenamento`, branch `main`, deploy automatico con GitHub Pages a ogni push). Ultimo commit al momento di questo handoff: `1474017`.
+Pubblicato su https://sbillo2003.github.io/allenamento/ (repo pubblico `sbillo2003/allenamento`, branch `main`, deploy automatico con GitHub Pages a ogni push).
 
 **Verificato** (test, build, prova nel browser a 375×812):
 - 33 test su 33 (`src/logic/*.test.ts`), controllo dei tipi pulito, build ok.
@@ -54,7 +54,7 @@ Niente. Nessun server né processo attivo.
 
 ## Prossimi passi
 
-0. **Bonifica del repository (urgente, serve il via libera dell'utente).** Le 26 immagini di `app ispirazione allenamento/` sono state pubblicate per errore nel commit `4ce0110` (repo pubblico). Sono state tolte dal ramo e messe nel `.gitignore`, ma **restano nella storia**: chi apre quel commit le vede ancora. Sono screenshot di app di terzi (da Mobbin) e schermate del telefono dell'utente, in una si legge il suo peso. Per eliminarle davvero serve riscrivere la storia e fare un push forzato su `main` (azione distruttiva, da non fare senza conferma), oppure rendere il repo privato (ma allora Pages gratuito non funziona). Chiedere all'utente quale strada preferisce.
+0. **Bonifica del repository: fatta il 22/10/2026, con un residuo.** Le 26 immagini di `app ispirazione allenamento/` (screenshot di app di terzi e schermate del telefono dell'utente) erano finite per errore nel repo pubblico. La storia di `main` è stata riscritta senza di esse e pubblicata con push forzato: nessun commit del ramo le contiene più, e il contenuto del codice è identico a prima (verificato con un confronto degli alberi). **Residuo:** GitHub conserva i commit orfani e li serve ancora a chi conosce il loro indirizzo diretto; il ramo e il sito pubblicato rispondono 404. Per cancellarli del tutto bisogna chiederlo al supporto di GitHub (che può rimuovere le viste in cache e fare la pulizia), e ripulire le esecuzioni vecchie di Actions, che puntano a quei commit. Non fare altro senza chiedere all'utente se vuole spingersi fino a lì.
 1. **Milestone 5, rifiniture** (da `docs/design.md`). Finito quando ciascuna è verificata nel browser a 375 px e ha il suo commit:
    - selettore di periodo `7g / 30g / 90g / Tutti` sopra i grafici in `src/screens/ProgressScreen.tsx`;
    - scheda a sfumatura per la serie nel player (`src/screens/PlayerScreen.tsx`) e nel riepilogo finale;
@@ -73,7 +73,7 @@ Niente. Nessun server né processo attivo.
 
 ## Trappole e lezioni
 
-- **`git add -A` senza guardare `git status` ha pubblicato cartelle che non dovevano uscire** (vedi passo 0). Ora la cartella è nel `.gitignore`; resta la regola di guardare lo stato prima di aggiungere.
+- **`git add -A` senza guardare `git status` ha pubblicato cartelle che non dovevano uscire** (vedi passo 0). Ora la cartella è nel `.gitignore`; resta la regola di guardare lo stato prima di aggiungere. Riscrivere la storia richiede `git filter-branch` (`git-filter-repo` non è installato) e `git push --force-with-lease=main:<sha>`, e dopo la riscrittura gli identificativi dei commit cambiano tutti.
 - **Service worker**: su GitHub Pages una nuova versione compare alla *seconda* apertura. In sviluppo non si registra più; se localhost mostra codice vecchio: cancellare registrazioni e cache dalla console del browser.
 - **Il browser incorporato non registra il service worker su localhost** ("unknown error"): verificarlo solo sull'URL pubblico.
 - **Il dev server si disallinea quando la sessione cambia cartella**: riavviarlo con `preview_start` (nome `allenamento`, porta 3000) e aspettare con un ciclo di `curl` che risponda 200 prima di navigare. `.claude/launch.json` è nel `.gitignore`: va ricreato (`npm run dev`, porta 3000).
@@ -95,7 +95,7 @@ Niente. Nessun server né processo attivo.
 | Piano di design e milestone | `docs/design.md` |
 | Audit iniziale e miglioramenti | `docs/audit-iniziale.md` |
 | Prompt originale per AI Studio | `docs/prompt-originale-ai-studio.md` |
-| Schermate di riferimento dell'utente | `app ispirazione allenamento/` (ora ignorata da git, ma ancora nella storia del commit `4ce0110`) |
+| Schermate di riferimento dell'utente | `app ispirazione allenamento/` (ignorata da git, resta solo sul disco dell'utente) |
 | Libreria esercizi | `src/data/exercises.ts` |
 | Distretti muscolari | `src/data/muscoli.ts`, `src/components/MuscleMap.tsx` |
 | Recupero | `src/logic/recupero.ts`, `src/components/RecuperoCard.tsx` |
