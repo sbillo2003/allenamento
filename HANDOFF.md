@@ -1,4 +1,4 @@
-# Stato del lavoro (aggiornato il 22/10/2026)
+# Stato del lavoro (aggiornato il 22/10/2026, dopo la Milestone 5)
 
 ## Obiettivo
 
@@ -55,10 +55,11 @@ Niente. Nessun server né processo attivo.
 ## Prossimi passi
 
 0. **Bonifica del repository: fatta il 22/10/2026, con un residuo.** Le 26 immagini di `app ispirazione allenamento/` (screenshot di app di terzi e schermate del telefono dell'utente) erano finite per errore nel repo pubblico. La storia di `main` è stata riscritta senza di esse e pubblicata con push forzato: nessun commit del ramo le contiene più, e il contenuto del codice è identico a prima (verificato con un confronto degli alberi). **Residuo:** GitHub conserva i commit orfani e li serve ancora a chi conosce il loro indirizzo diretto; il ramo e il sito pubblicato rispondono 404. Per cancellarli del tutto bisogna chiederlo al supporto di GitHub (che può rimuovere le viste in cache e fare la pulizia), e ripulire le esecuzioni vecchie di Actions, che puntano a quei commit. Non fare altro senza chiedere all'utente se vuole spingersi fino a lì.
-1. **Milestone 5, rifiniture** (da `docs/design.md`). Finito quando ciascuna è verificata nel browser a 375 px e ha il suo commit:
-   - selettore di periodo `7g / 30g / 90g / Tutti` sopra i grafici in `src/screens/ProgressScreen.tsx`;
-   - scheda a sfumatura per la serie nel player (`src/screens/PlayerScreen.tsx`) e nel riepilogo finale;
+1. **Milestone 5, rifiniture: fatta il 22/10/2026** (tre commit, verificati nel browser a 375 px, test 39/39, lint e build puliti; **non ancora pubblicati con push**):
+   - selettore `7g / 30g / 90g / Tutti` nei Progressi (`src/logic/periodo.ts`, 6 test). Vale per il volume (7g = barre giornaliere, altrimenti settimanali) e per peso/vita; radar e costanza hanno una finestra loro e non cambiano;
+   - scheda a sfumatura rosso-arancio per le serie nel player (`src/components/SchedaSerie.tsx`, sostituisce i pallini) e per le statistiche del riepilogo finale. Colori fissi anche nel tema chiaro, per il contrasto;
    - barra di navigazione a pillola galleggiante in `src/App.tsx`.
+   - **Resta della M5 solo "righe esercizio con miniatura del distretto"** (`docs/design.md`): non era nell'elenco dei passi, va deciso se farla.
 2. **Provare tutto sul telefono vero**: disinstallare e reinstallare la PWA (icona), aprirla due volte (offline), fare qualche allenamento vero e vedere se le soglie del recupero sembrano giuste.
 3. **Correggere le ~20 classi Tailwind inattive** (`bg-accent/10`, `border-error/40`…): i colori non sono nel tema di Tailwind, quindi il modificatore `/NN` non produce stile. Serve decidere come registrarli senza rompere il cambio tema chiaro/scuro (`src/index.css`).
 4. **Aggiungere uno script `test`** a `package.json` (oggi si lancia a mano, vedi sotto).
@@ -73,6 +74,7 @@ Niente. Nessun server né processo attivo.
 
 ## Trappole e lezioni
 
+- **Identita' git mancante dopo la bonifica**: `git commit` fallisce con "Author identity unknown". I commit del 22/10 sono stati fatti con `git -c user.name=Billy -c user.email=billy2003.bs@gmail.com commit ...` senza toccare la configurazione. Se si vuole sistemare: `git config user.name` / `user.email` nel repository.
 - **`git add -A` senza guardare `git status` ha pubblicato cartelle che non dovevano uscire** (vedi passo 0). Ora la cartella è nel `.gitignore`; resta la regola di guardare lo stato prima di aggiungere. Riscrivere la storia richiede `git filter-branch` (`git-filter-repo` non è installato) e `git push --force-with-lease=main:<sha>`, e dopo la riscrittura gli identificativi dei commit cambiano tutti.
 - **Service worker**: su GitHub Pages una nuova versione compare alla *seconda* apertura. In sviluppo non si registra più; se localhost mostra codice vecchio: cancellare registrazioni e cache dalla console del browser.
 - **Il browser incorporato non registra il service worker su localhost** ("unknown error"): verificarlo solo sull'URL pubblico.
