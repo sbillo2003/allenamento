@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { EXERCISES, PATTERN_NAMES } from '../data/exercises';
 import { WARMUP_ROUTINE } from '../logic/generator';
+import { SchedaSerie, SFUMATURA_SPINTA } from '../components/SchedaSerie';
 import { useApp, ACTIVE_SESSION_STORAGE_KEY } from '../store/AppContext';
 import {
   playCountdownBeep,
@@ -548,22 +549,25 @@ export function PlayerScreen({ session, onClose, resumedState }: PlayerProps) {
           </div>
 
           {/* Statistiche sessione */}
-          <div className="grid grid-cols-3 gap-3 p-4 rounded-[20px] bg-surface border border-subtle text-center">
+          <div
+            className="grid grid-cols-3 gap-3 p-4 rounded-[20px] text-center text-white"
+            style={{ background: SFUMATURA_SPINTA }}
+          >
             <div>
-              <div className="text-xs text-muted-txt">Durata</div>
-              <div className="text-xl font-bold text-txt tabular-nums mt-0.5">
+              <div className="text-xs opacity-90">Durata</div>
+              <div className="text-xl font-bold tabular-nums mt-0.5">
                 {formatTime(workoutDurationSec)}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-txt">Serie totali</div>
-              <div className="text-xl font-bold text-accent tabular-nums mt-0.5">
+              <div className="text-xs opacity-90">Serie totali</div>
+              <div className="text-xl font-bold tabular-nums mt-0.5">
                 {completedSets.length}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-txt">Ripetizioni</div>
-              <div className="text-xl font-bold text-txt tabular-nums mt-0.5">
+              <div className="text-xs opacity-90">Ripetizioni</div>
+              <div className="text-xl font-bold tabular-nums mt-0.5">
                 {totalReps > 0 ? totalReps : `${totalSecs}s`}
               </div>
             </div>
@@ -672,10 +676,6 @@ export function PlayerScreen({ session, onClose, resumedState }: PlayerProps) {
           <h2 className="text-lg font-bold tracking-tight text-txt truncate px-2">
             {currentExercise.nome}
           </h2>
-          <div className="text-xs text-muted-txt mt-0.5">
-            Serie <span className="text-accent font-bold tabular-nums">{currentSetIndex}</span> di{' '}
-            <span className="tabular-nums">{currentBlock.serie}</span>
-          </div>
         </div>
       </div>
 
@@ -898,38 +898,12 @@ export function PlayerScreen({ session, onClose, resumedState }: PlayerProps) {
 
       {/* 3. PARTE INFERIORE: FEEDBACK & PALLINI DELLE SERIE */}
       <div className="p-4 pb-safe space-y-3">
-        {/* Pallini delle serie (Toccabili se completati per correggere) */}
-        <div className="flex justify-center items-center gap-2.5">
-          {Array.from({ length: currentBlock.serie }).map((_, idx) => {
-            const isCompleted = idx + 1 < currentSetIndex;
-            const isCurrent = idx + 1 === currentSetIndex;
-
-            if (isCompleted) {
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setEditingSetIndex(idx)}
-                  className="w-4 h-4 rounded-full bg-accent flex items-center justify-center text-[9px] font-bold text-accent-contrast shadow-xs hover:scale-110 active:scale-95 transition-all"
-                  title={`Modifica serie ${idx + 1}`}
-                >
-                  {idx + 1}
-                </button>
-              );
-            }
-
-            return (
-              <div
-                key={idx}
-                className={`w-3.5 h-3.5 rounded-full transition-all ${
-                  isCurrent
-                    ? 'border-2 border-accent bg-transparent'
-                    : 'bg-surface border border-subtle'
-                }`}
-              />
-            );
-          })}
-        </div>
+        {/* Scheda delle serie: le completate si toccano per correggerle */}
+        <SchedaSerie
+          totale={currentBlock.serie}
+          corrente={currentSetIndex}
+          onModifica={setEditingSetIndex}
+        />
 
         {/* Due domande di feedback durante il recupero */}
         {isResting ? (
