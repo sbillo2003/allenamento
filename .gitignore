@@ -19,3 +19,6 @@ bun.lock
 Thumbs.db
 *.log
 .claude/
+
+# Screenshot di riferimento dell utente: materiale di terzi e schermate personali, non vanno pubblicati
+app ispirazione allenamento/
