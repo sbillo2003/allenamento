@@ -15,6 +15,7 @@ import {
 import { ProgressionTree } from '../components/ProgressionTree';
 import { EXERCISES } from '../data/exercises';
 import { WorkoutLog } from '../types';
+import { Periodo, PERIODI, filtraPerPeriodo } from '../logic/periodo';
 import { IconTrophy, IconClose, IconChevronRight } from '../components/Icons';
 
 export function ProgressScreen() {
@@ -23,6 +24,7 @@ export function ProgressScreen() {
 
   const [activeTab, setActiveTab] = useState<'grafici' | 'percorso' | 'pr' | 'storico'>('grafici');
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutLog | null>(null);
+  const [periodo, setPeriodo] = useState<Periodo>('90g');
   const [historyFilter, setHistoryFilter] = useState<'tutti' | '30gg' | 'anno'>('tutti');
 
   const initialAssessment = assessments[0];
@@ -158,15 +160,39 @@ export function ProgressScreen() {
             </p>
           </div>
 
-          {/* Grafico 1: Volume settimanale a barre */}
+          {/* Il periodo vale per il volume e per peso e vita; radar e costanza hanno una finestra loro */}
+          <div
+            role="group"
+            aria-label="Periodo dei grafici"
+            className="grid grid-cols-4 gap-1 p-1 bg-surface rounded-xl border border-subtle text-[11px]"
+          >
+            {PERIODI.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPeriodo(p.id)}
+                aria-pressed={periodo === p.id}
+                className={`py-1.5 rounded-lg font-semibold transition-all ${
+                  periodo === p.id
+                    ? 'bg-elevated text-accent border border-subtle'
+                    : 'text-muted-txt hover:text-txt'
+                }`}
+              >
+                {p.etichetta}
+              </button>
+            ))}
+          </div>
+
+          {/* Grafico 1: Volume a barre */}
           <div className="p-4 rounded-[20px] bg-surface border border-subtle space-y-3">
             <div>
-              <h2 className="text-sm font-bold text-txt">Volume Settimanale Totale</h2>
+              <h2 className="text-sm font-bold text-txt">
+                {periodo === '7g' ? 'Volume Giornaliero' : 'Volume Settimanale Totale'}
+              </h2>
               <p className="text-[11px] text-muted-txt">
-                Somma delle ripetizioni per tutte le serie nelle ultime 12 settimane.
+                Somma delle ripetizioni per tutte le serie, {periodo === '7g' ? 'un giorno per barra' : 'una settimana per barra'}.
               </p>
             </div>
-            <VolumeBarChart workouts={workouts} />
+            <VolumeBarChart workouts={workouts} periodo={periodo} />
           </div>
 
           {/* Grafico 2: Radar a 6 assi */}
@@ -188,7 +214,10 @@ export function ProgressScreen() {
                 Doppia linea temporale per monitorare la ricomposizione corporea.
               </p>
             </div>
-            <DoubleLineBodyChart measurements={measurements} />
+            <DoubleLineBodyChart
+              measurements={filtraPerPeriodo(measurements, periodo)}
+              periodoFiltrato={periodo !== 'tutti' && measurements.length > 0}
+            />
           </div>
 
           {/* Grafico 4: Mappa a calendario degli ultimi tre mesi */}

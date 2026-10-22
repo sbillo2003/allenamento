@@ -5,53 +5,32 @@
 
 import React, { useState } from 'react';
 import { WorkoutLog, Measurement, Pattern } from '../types';
+import { Periodo, bloccoVolume } from '../logic/periodo';
 
 // ==========================================
 // 1. VOLUME SETTIMANALE (A BARRE, 12 SETTIMANE)
 // ==========================================
-export function VolumeBarChart({ workouts }: { workouts: WorkoutLog[] }) {
+export function VolumeBarChart({ workouts, periodo }: { workouts: WorkoutLog[]; periodo: Periodo }) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
-  // Calcola volume per le ultime 12 settimane
-  const now = new Date();
-  const weeks: { weekLabel: string; volume: number; setsCount: number }[] = [];
-
-  for (let i = 11; i >= 0; i--) {
-    const start = new Date(now.getTime() - (i + 1) * 7 * 24 * 3600 * 1000);
-    const end = new Date(now.getTime() - i * 7 * 24 * 3600 * 1000);
-
-    const weekWorkouts = workouts.filter((w) => {
-      const d = new Date(w.data);
-      return d >= start && d < end;
-    });
-
-    let totalVol = 0;
-    let setsCount = 0;
-    for (const w of weekWorkouts) {
-      for (const s of w.sets) {
-        // Gli esercizi unilaterali si contano una volta sola per serie
-        totalVol += (s.repsFatte || 1);
-        setsCount++;
-      }
-    }
-
-    const label = `S-${i === 0 ? 'Oggi' : i}`;
-    weeks.push({ weekLabel: label, volume: totalVol, setsCount });
-  }
+  const weeks = bloccoVolume(workouts, periodo);
+  // Cambiando periodo cambia il numero di barre: una selezione vecchia non vale piu'
+  const sel = selectedIdx !== null && selectedIdx < weeks.length ? selectedIdx : null;
 
   const maxVol = Math.max(...weeks.map((w) => w.volume), 80);
   const chartHeight = 160;
   const chartWidth = 320;
-  const barWidth = 16;
+  const barWidth = Math.min(16, (chartWidth / weeks.length) * 0.6);
+  const passoEtichette = Math.ceil(weeks.length / 13);
   const gap = (chartWidth - barWidth * weeks.length) / (weeks.length + 1);
 
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs text-muted-txt">Volume (reps totali)</span>
-        {selectedIdx !== null && (
+        {sel !== null && (
           <span className="text-xs text-accent font-semibold tabular-nums">
-            {weeks[selectedIdx].weekLabel}: {weeks[selectedIdx].volume} reps ({weeks[selectedIdx].setsCount} serie)
+            {weeks[sel].etichetta}: {weeks[sel].volume} reps ({weeks[sel].serie} serie)
           </span>
         )}
       </div>
@@ -83,7 +62,7 @@ export function VolumeBarChart({ workouts }: { workouts: WorkoutLog[] }) {
             const barH = (w.volume / maxVol) * chartHeight;
             const x = gap + idx * (barWidth + gap);
             const y = chartHeight - barH;
-            const isHovered = selectedIdx === idx;
+            const isHovered = sel === idx;
 
             return (
               <g
@@ -111,7 +90,7 @@ export function VolumeBarChart({ workouts }: { workouts: WorkoutLog[] }) {
                   fontWeight={isHovered ? '600' : '400'}
                   className="tabular-nums"
                 >
-                  {w.weekLabel}
+                  {(weeks.length - 1 - idx) % passoEtichette === 0 ? w.etichetta : ''}
                 </text>
               </g>
             );
@@ -279,7 +258,13 @@ export function RadarPatternChart({
 // ==========================================
 // 3. ANDAMENTO PESO & VITA (A LINEA DOPPIA)
 // ==========================================
-export function DoubleLineBodyChart({ measurements }: { measurements: Measurement[] }) {
+export function DoubleLineBodyChart({
+  measurements,
+  periodoFiltrato = false
+}: {
+  measurements: Measurement[];
+  periodoFiltrato?: boolean;
+}) {
   const validMeasurements = measurements
     .filter((m) => typeof m.pesoKg === 'number' && typeof m.vitaCm === 'number')
     .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
@@ -287,8 +272,14 @@ export function DoubleLineBodyChart({ measurements }: { measurements: Measuremen
   if (validMeasurements.length === 0) {
     return (
       <div className="p-6 text-center rounded-xl bg-elevated/40 border border-subtle text-xs text-muted-txt space-y-1">
-        <p className="font-semibold text-txt">Nessuna misurazione completa della vita</p>
-        <p>Aggiungi circonferenza vita e peso dal tuo Profilo per tracciare il grafico a doppia linea.</p>
+        <p className="font-semibold text-txt">
+          {periodoFiltrato ? 'Nessuna misurazione in questo periodo' : 'Nessuna misurazione completa della vita'}
+        </p>
+        <p>
+          {periodoFiltrato
+            ? "Scegli un periodo più lungo o aggiungi peso e vita dal Profilo."
+            : 'Aggiungi circonferenza vita e peso dal tuo Profilo per tracciare il grafico a doppia linea.'}
+        </p>
       </div>
     );
   }
